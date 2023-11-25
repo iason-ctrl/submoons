@@ -117,8 +117,8 @@ frequency_including_none = np.gradient(psi_solution_including_none)
 frequency_including_tidal = np.gradient(psi_solution_including_tidal)
 frequency_including_centripetal = np.gradient(psi_solution_including_centripetal)
 
-plt.plot(frequency_including_none, label="base frequency", color="black",ls="--", lw=3)
-plt.plot(frequency_including_tidal, label="frequency under tidal force", color=blue, lw=3)
+plt.plot(time_array, frequency_including_none, label="base frequency", color="black",ls="--", lw=3)
+plt.plot(time_array, frequency_including_tidal, label="frequency under tidal force", color=blue, lw=3)
 #plt.plot(frequency_including_centripetal, label="frequency under centripetal force", color=red, lw=3)
 
 
