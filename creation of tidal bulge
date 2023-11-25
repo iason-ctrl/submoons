@@ -1,0 +1,161 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.constants import G
+from scipy.integrate import solve_bvp
+import seaborn as sns
+from matplotlib.ticker import AutoMinorLocator
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+save_figs = True
+
+fig, ax = plt.subplots()
+
+plt.rcParams["font.family"] = "Hiragino Maru Gothic Pro"
+plt.rcParams["font.size"] = "12"
+plt.rc('axes', labelsize=15)
+plt.rc('figure', titlesize=20)
+
+ax.tick_params(axis='both',direction='in',width=1.5)
+ax.tick_params(which='major',direction='in', length=7, )
+ax.tick_params(which='minor',direction='in', length=4, )
+ax.xaxis.set_minor_locator(AutoMinorLocator())
+ax.yaxis.set_minor_locator(AutoMinorLocator())
+
+palette = sns.color_palette('muted')
+blue, orange, green, red, mauve, brown, pink, gray, yellow, lightblue = palette
+
+moon_mass =  2*10**23 # kgs
+earth_mass = 6*10**24 # kgs
+earth_radius = 63_700 # m
+distance_moon_earth =  78_400 # 384_400_000  m
+moon_radius =  1_737 # m
+earths_inertia = 2/5 * earth_mass * earth_radius**2
+
+eta =  ( G * moon_mass )/( distance_moon_earth**2 * earth_radius )
+
+polar_angle_of_satellite = np.linspace(0,2*np.pi, 100)
+global_satellite_angle = np.pi/4
+
+print("Constant eta value: ", eta, " and constant value multiplied onto the tidal force (in contrast to centripetal force) ", 3/2*earth_radius/distance_moon_earth)
+
+def surface_equation(psi_dot ,psi_dot_zero):
+        radius_element = psi_dot/psi_dot_zero
+        mean_radius = 1
+        return mean_radius+radius_element
+
+def p_2_polynomial(psi):
+    return 1/2 * (3*np.cos(psi)**2-1)
+
+# Define second order ordinary differential equation as a function
+def including_tidal(t, psi):
+    """ ψ = psi[0] and psi[1] = ψ'' ? """
+    first_component = psi[1] # corresponds to ψ': ψ' = psi[1] =: u substitution
+    second_component = eta * ( + 3/2 * earth_radius/distance_moon_earth * np.sin( 2 * ( global_satellite_angle - psi[0] ) ) ) # corresponds to ψ'' in terms of ψ : ψ'' = f(ψ) # corresponds to ψ'' in terms of ψ : ψ'' = f(ψ) =: u'
+
+    return np.vstack((first_component, second_component))
+
+def including_centripetal(t, psi):
+    """ ψ = psi[0] and psi[1] = ψ'' ? """
+    first_component = psi[1] # corresponds to ψ': ψ' = psi[1] substitution
+    second_component = eta * ( - np.sin( global_satellite_angle - psi[0] ) ) # corresponds to ψ'' in terms of ψ : ψ'' = f(ψ)
+
+    return np.vstack((first_component, second_component))
+
+def including_none(t, psi):
+    """ ψ = psi[0] and psi[1] = ψ'' ? """
+    first_component = psi[1] # corresponds to ψ': ψ' = psi[1] =: u substitution
+    second_component = 0*psi[0]
+
+    return np.vstack((first_component, second_component))
+
+# Define the boundary conditions
+def boundary_conditions(y_lower, y_upper):
+    # 2π periodic
+    return np.array([y_lower[0]-0, y_upper[0] - 2*np.pi])
+
+
+# Generate an initial guess for the solution
+x_arr = np.linspace(0, 12.56, 5)  # Initial mesh
+y_guess = np.zeros((2, x_arr.size))
+
+# finer mesh
+time_array = np.linspace(0, 12.56, 2000)
+
+# Solve the BVP using solve_bvp
+solution_including_tidal = solve_bvp(including_tidal, boundary_conditions, x_arr, y_guess)
+solution_including_centripetal = solve_bvp(including_centripetal, boundary_conditions, x_arr, y_guess)
+solution_including_none = solve_bvp(including_none, boundary_conditions, x_arr, y_guess)
+
+# Evaluate the solution on a finer grid for plotting
+psi_solution_including_tidal = solution_including_tidal.sol(time_array)[0]
+psi_solution_including_centripetal = solution_including_centripetal.sol(time_array)[0]
+psi_solution_including_none = solution_including_none.sol(time_array)[0]
+
+# Plot the solution
+ax.plot(time_array, psi_solution_including_none, label='No forces', color="black", ls="--", lw=3)
+ax.plot(time_array, psi_solution_including_centripetal, label='Centripetal forces', color=green, lw=3)
+ax.plot(time_array, psi_solution_including_tidal, label='Tidal forces', color=blue, lw=3, ls="-")
+
+ax.hlines(2*np.pi, 0,15, label="One full rotation", color="black", lw=1, ls="--")
+ax.set_title("Numerical solution to boundary value problem, ODE of second order", fontsize=20)
+ax.legend(loc="lower right", fontsize=20)
+ax.set_xlabel("Time $t$ in seconds", fontsize=15)
+ax.set_ylabel("$\psi$ in radians", fontsize=15)
+
+if save_figs:
+    fig.set_size_inches(16, 9)
+    plt.savefig("formation_of_tidal_bulge/psi_solution.png", dpi=300, bbox_inches='tight')
+else:
+    plt.show()
+
+if save_figs:
+    plt.clf()
+fig, ax = plt.subplots()
+
+frequency_including_none = np.gradient(psi_solution_including_none)
+frequency_including_tidal = np.gradient(psi_solution_including_tidal)
+frequency_including_centripetal = np.gradient(psi_solution_including_centripetal)
+
+plt.plot(frequency_including_none, label="base frequency", color="black",ls="--", lw=3)
+plt.plot(frequency_including_tidal, label="frequency under tidal force", color=blue, lw=3)
+#plt.plot(frequency_including_centripetal, label="frequency under centripetal force", color=red, lw=3)
+
+
+plt.title("Gradients of solutions of $\ddot{\psi}=f(\psi)$", fontsize=20)
+plt.legend(loc="lower right", fontsize=20)
+plt.xlabel("Time $t$ in seconds", fontsize=15)
+plt.ylabel("$\dot{\psi}$ in radians/sec", fontsize=15)
+
+if save_figs:
+    fig.set_size_inches(16, 9)
+    plt.savefig("formation_of_tidal_bulge/psi_dot_solutions.png", dpi=300, bbox_inches='tight')
+else:
+    plt.show()
+
+
+surface_equation_no_forces = surface_equation(psi_dot=frequency_including_none, psi_dot_zero=frequency_including_none)
+surface_equation_all_forces = surface_equation(psi_dot=frequency_including_tidal, psi_dot_zero=frequency_including_none)
+surface_equation_only_centripetal_forces = surface_equation(psi_dot=frequency_including_centripetal, psi_dot_zero=frequency_including_none)
+
+# Clear Plot
+if save_figs:
+    plt.clf()
+
+fig, ax = plt.subplots()
+ax.set_aspect('equal', adjustable='box')
+
+plt.title("Surface Equation of Planet")
+plt.plot(surface_equation_no_forces*np.cos(psi_solution_including_none), surface_equation_no_forces*np.sin(psi_solution_including_none),"--",lw=3, color="black", label="With no forces")
+plt.plot(surface_equation_all_forces*np.cos(psi_solution_including_tidal), surface_equation_all_forces*np.sin(psi_solution_including_tidal),"-",lw=3, color=blue, label="Tidal Forces")
+#plt.plot(surface_equation_only_centripetal_forces*np.cos(psi_solution_including_centripetal), surface_equation_only_centripetal_forces*np.sin(psi_solution_including_centripetal),"-.",lw=3, color=green, label="Only centripetal forces")
+#plt.plot((1+0.1*p_2_polynomial(psi_solution_including_centripetal_and_tidal))*np.cos(psi_solution_including_centripetal_and_tidal),(1+0.1*p_2_polynomial(psi_solution_including_centripetal_and_tidal))*np.sin(psi_solution_including_centripetal_and_tidal), lw=3, color="black", ls="-", label="Legendre Polynomial Surface Equ")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend()
+
+if save_figs:
+    fig.set_size_inches(16, 9)
+    plt.savefig(f"formation_of_tidal_bulge/surface_equation_satellite_angle_{np.round(np.rad2deg(global_satellite_angle))}.png", dpi=300, bbox_inches='tight')
+else:
+    plt.show()
