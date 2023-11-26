@@ -34,8 +34,7 @@ earths_inertia = 2/5 * earth_mass * earth_radius**2
 
 eta =  ( G * moon_mass )/( distance_moon_earth**2 * earth_radius )
 
-polar_angle_of_satellite = np.linspace(0,2*np.pi, 100)
-global_satellite_angle = np.pi/4
+global_satellite_angle = 0
 
 print("Constant eta value: ", eta, " and constant value multiplied onto the tidal force (in contrast to centripetal force) ", 3/2*earth_radius/distance_moon_earth)
 
@@ -43,6 +42,12 @@ def surface_equation(psi_dot ,psi_dot_zero):
         radius_element = psi_dot/psi_dot_zero
         mean_radius = 1
         return mean_radius+radius_element
+
+
+def surface_equation_legendre(angle):
+    mean_radius = 2
+    epsilon = .09
+    return mean_radius + epsilon * p_2_polynomial(angle)
 
 def p_2_polynomial(psi):
     return 1/2 * (3*np.cos(psi)**2-1)
@@ -135,8 +140,9 @@ else:
 
 
 surface_equation_no_forces = surface_equation(psi_dot=frequency_including_none, psi_dot_zero=frequency_including_none)
-surface_equation_all_forces = surface_equation(psi_dot=frequency_including_tidal, psi_dot_zero=frequency_including_none)
-surface_equation_only_centripetal_forces = surface_equation(psi_dot=frequency_including_centripetal, psi_dot_zero=frequency_including_none)
+surface_equation_tidal_force = surface_equation(psi_dot=frequency_including_tidal, psi_dot_zero=frequency_including_none)
+surface_equation_centripetal_force = surface_equation(psi_dot=frequency_including_centripetal, psi_dot_zero=frequency_including_none)
+surface_equation_legendre_tidal_force = surface_equation_legendre(global_satellite_angle-psi_solution_including_tidal)
 
 # Clear Plot
 if save_figs:
@@ -147,9 +153,9 @@ ax.set_aspect('equal', adjustable='box')
 
 plt.title("Surface Equation of Planet")
 plt.plot(surface_equation_no_forces*np.cos(psi_solution_including_none), surface_equation_no_forces*np.sin(psi_solution_including_none),"--",lw=3, color="black", label="With no forces")
-plt.plot(surface_equation_all_forces*np.cos(psi_solution_including_tidal), surface_equation_all_forces*np.sin(psi_solution_including_tidal),"-",lw=3, color=blue, label="Tidal Forces")
-#plt.plot(surface_equation_only_centripetal_forces*np.cos(psi_solution_including_centripetal), surface_equation_only_centripetal_forces*np.sin(psi_solution_including_centripetal),"-.",lw=3, color=green, label="Only centripetal forces")
-#plt.plot((1+0.1*p_2_polynomial(psi_solution_including_centripetal_and_tidal))*np.cos(psi_solution_including_centripetal_and_tidal),(1+0.1*p_2_polynomial(psi_solution_including_centripetal_and_tidal))*np.sin(psi_solution_including_centripetal_and_tidal), lw=3, color="black", ls="-", label="Legendre Polynomial Surface Equ")
+plt.plot(surface_equation_tidal_force*np.cos(psi_solution_including_tidal), surface_equation_tidal_force*np.sin(psi_solution_including_tidal),"-",lw=3, color=blue, label="Tidal Forces")
+#plt.plot(surface_equation_centripetal_force*np.cos(psi_solution_including_centripetal), surface_equation_centripetal_force*np.sin(psi_solution_including_centripetal),"-.",lw=3, color=green, label="Only centripetal forces")
+plt.plot(surface_equation_legendre_tidal_force*np.cos(psi_solution_including_tidal),surface_equation_legendre_tidal_force*np.sin(psi_solution_including_tidal), lw=3, color=green, ls="-", label="Surface equation model with Legendre Polynomial")
 plt.xlabel("x")
 plt.ylabel("y")
 plt.legend()
